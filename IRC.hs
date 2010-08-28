@@ -12,7 +12,6 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 
-import IRC
 module IRC (Channel, ChannelSet, Event, OutputEvent, EventSet,
     Message(Ping, PrivMsg, Join, Quit),
     connectIRC, joinChannel, joinChannels, delayEvent, get, put,
