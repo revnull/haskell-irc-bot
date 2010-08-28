@@ -1,0 +1,11 @@
+This is an IRC Bot that I'm writing in an attempt to learn Haskell better.
+
+It is, in many ways, a framework for writing IRC bots as much as it is a bot.
+
+It is a work in progress.  Parts of the protocol are missing or unimplemented.
+Some things in the API are missing or broken.  Nothing is documented.
+
+Enjoy.
+
+Thanks,
+Rev. Johnny Healey
