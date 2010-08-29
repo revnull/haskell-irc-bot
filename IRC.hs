@@ -31,7 +31,7 @@ type ChannelSet a = Map.Map String (Channel a)
 
 type Event a = State.State (Channel a)
 type OutputEvent a = WriterT [String] (Event a)
-type EventSet a = Map.Map Int (OutputEvent a ())
+type EventSet a = Map.Map Integer (OutputEvent a ())
 
 data Message = Ping String 
     | PrivMsg String String String 
@@ -82,7 +82,7 @@ setEventSet events = do
     lift . State.put $ (Channel name state events)
     return ()
 
-delayEvent :: Int -> OutputEvent a () -> OutputEvent a ()
+delayEvent :: Integer -> OutputEvent a () -> OutputEvent a ()
 delayEvent delay ev = do
     (Channel name state events) <- lift State.get
     lift . State.put $ Channel name state (Map.insert delay ev events)
