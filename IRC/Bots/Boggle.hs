@@ -12,7 +12,7 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 
-module IRC.Bots.Boggle (boggle, initialBoggle) where
+module IRC.Bots.Boggle (boggle, initialBoggle, initialRandomBoggle) where
 
 import IRC
 import IRC.Bot
@@ -22,36 +22,43 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Random
 import IRC.Bots.Boggle.Board
+import IRC.Bots.Boggle.Solver
+import Maybe
+import Data.Char
 
 type Scores = Map.Map String Int
 type WordSet = Set.Set String
 
 data Game = Game Board Integer Scores WordSet
-data BoggleBot = BoggleBot (Maybe Game) StdGen Int
+data BoggleBot = BoggleBot Dictionary (Maybe Game) StdGen Int
+
+getDictionary = do
+    (BoggleBot dict _ _ _) <- get
+    return dict
 
 getGame = do
-    (BoggleBot game _ _) <- get
+    (BoggleBot _ game _ _) <- get
     return game
 
 putGame game = do
-    (BoggleBot _ gen sb) <- get
-    put (BoggleBot game gen sb)
+    (BoggleBot dict _ gen sb) <- get
+    put (BoggleBot dict game gen sb)
 
 getGen = do
-    (BoggleBot _ gen _) <- get
+    (BoggleBot _ _ gen _) <- get
     return gen
 
 putGen gen = do
-    (BoggleBot game _ sb) <- get
-    put (BoggleBot game gen sb)
+    (BoggleBot dict game _ sb) <- get
+    put (BoggleBot dict game gen sb)
 
 getScrollback = do
-    (BoggleBot _ _ sb) <- get
+    (BoggleBot _ _ _ sb) <- get
     return sb
 
 putScrollback sb = do
-    (BoggleBot game gen _) <- get
-    put (BoggleBot game gen sb)
+    (BoggleBot dict game gen _) <- get
+    put (BoggleBot dict game gen sb)
 
 makeRandomBoard :: OutputEvent BoggleBot Board
 makeRandomBoard = do
@@ -70,14 +77,30 @@ outputBoard b = do
     mapM privMsg [concatMap formatLetter r | r <- rows b]
     return ()
 
-initialBoggle init = BoggleBot Nothing (mkStdGen init) 0
+initialBoggle dict init = BoggleBot dict Nothing (mkStdGen init) 0
 
 finishGame = do
     privMsg "Time is up!"
     putGame Nothing
 
+validWords solutions text = 
+    let re = compile "[a-z]{3,}" [caseless]
+    in catMaybes $ do
+        word <- words text
+        return $ do
+            possible <- match re word []
+            let first = map toUpper $ head possible
+            if Set.member first solutions
+                then return first
+                else Nothing
+
 play :: Bot BoggleBot
-play msg ts = return ()
+play (PrivMsg user _ text) _ = do
+    game <- getGame
+    let (Game _ _ _ solutions) = fromJust game
+        words = validWords solutions text
+    return ()
+play _ _ = return ()
 
 startGame :: Bot BoggleBot
 startGame msg ts = 
@@ -85,15 +108,20 @@ startGame msg ts =
     in case privMsgTextMatch re [] msg of
         Just _ -> do
             board <- makeRandomBoard
-            putGame $ Just (Game board ts Map.empty Set.empty)
+            dict <- getDictionary
+            let words = solve dict board
+            putGame $ Just (Game board ts Map.empty words)
             outputBoard board
             delayEvent (ts + 180) finishGame
         Nothing -> return ()
 
 boggle :: Bot BoggleBot
 boggle msg ts = do
-    (BoggleBot game _ _) <- get
+    game <- getGame
     case game of
         Just g -> play msg ts
         Nothing -> startGame msg ts
 
+initialRandomBoggle dict = do
+    rand <- randomIO
+    return $ initialBoggle dict rand
