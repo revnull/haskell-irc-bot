@@ -61,6 +61,12 @@ putScrollback sb = do
     (BoggleBot dict game gen _) <- get
     put (BoggleBot dict game gen sb)
 
+incrementScrollback = do
+    sb <- getScrollback
+    let sb' = sb + 1
+    putScrollback sb'
+    return sb'
+
 makeRandomBoard :: OutputEvent BoggleBot Board
 makeRandomBoard = do
     gen <- getGen
@@ -76,6 +82,7 @@ formatLetter l =
 outputBoard :: Board -> OutputEvent BoggleBot ()
 outputBoard b = do
     mapM privMsg [concatMap formatLetter r | r <- rows b]
+    putScrollback 0
     return ()
 
 initialBoggle dict init = BoggleBot dict Nothing (mkStdGen init) 0
@@ -125,10 +132,13 @@ score user word = do
 play :: Bot BoggleBot
 play (PrivMsg user _ text) _ = do
     game <- getGame
-    let (Game _ _ _ solutions) = fromJust game
+    let (Game board _ _ solutions) = fromJust game
         words = validWords solutions text
     mapM (score user) words
-    return ()
+    sb <- incrementScrollback
+    if sb > 20
+        then outputBoard board
+        else return ()
 play _ _ = return ()
 
 startGame :: Bot BoggleBot
@@ -143,10 +153,13 @@ startGame msg ts =
             outputBoard board
             delayEvent (ts + 60) $ do
                 privMsg "Two Minutes Remaining"
+                outputBoard board
             delayEvent (ts + 120) $ do
                 privMsg "One Minute Remaining"
+                outputBoard board
             delayEvent (ts + 170) $ do
                 privMsg "Ten Seconds Remaining"
+                outputBoard board
             delayEvent (ts + 180) finishGame
         Nothing -> return ()
 
