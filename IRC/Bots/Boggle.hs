@@ -25,6 +25,7 @@ import IRC.Bots.Boggle.Board
 import IRC.Bots.Boggle.Solver
 import Maybe
 import Data.Char
+import Data.List
 
 type Scores = Map.Map String Int
 type WordSet = Set.Set String
@@ -79,8 +80,15 @@ outputBoard b = do
 
 initialBoggle dict init = BoggleBot dict Nothing (mkStdGen init) 0
 
+formatScore (name,score) = name ++ " : " ++ (show score)
+
 finishGame = do
     privMsg "Time is up!"
+    game <- getGame
+    let (Game _ _ scores _) = fromJust $ game
+        scores' = sortBy (\(_,s1) -> \(_,s2) -> compare s2 s1) $ 
+            Map.toList scores
+    mapM privMsg $ map formatScore scores'
     putGame Nothing
 
 validWords solutions text = 
@@ -94,11 +102,32 @@ validWords solutions text =
                 then return first
                 else Nothing
 
+wordValue w = 
+    let score = (length w) - 3
+        fibs = 1:1:zipWith (+) fibs (tail fibs)
+    in if score > 0
+        then fibs !! score
+        else 0
+
+alterScore new current = 
+    case current of
+        Nothing -> Just new
+        Just val -> Just $ new + val
+
+score user word = do
+    game <- getGame
+    let (Game board start scores words) = fromJust game
+        value = wordValue word
+        scores' = Map.alter (alterScore value) user scores
+        words' = Set.delete word words
+    putGame $ Just (Game board start scores' words')
+
 play :: Bot BoggleBot
 play (PrivMsg user _ text) _ = do
     game <- getGame
     let (Game _ _ _ solutions) = fromJust game
         words = validWords solutions text
+    mapM (score user) words
     return ()
 play _ _ = return ()
 
