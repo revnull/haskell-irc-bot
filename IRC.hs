@@ -13,7 +13,7 @@
 -- limitations under the License.
 
 module IRC (Channel, ChannelSet, Event, OutputEvent, EventSet,
-    Message(Ping, PrivMsg, Join, Quit),
+    Message(Ping, PrivMsg, Join, Quit), nextEventTime, popNextEvent,
     connectIRC, joinChannel, joinChannels, delayEvent, get, put,
     getChannelName, runOnChannel ) where
 
@@ -82,10 +82,30 @@ setEventSet events = do
     lift . State.put $ (Channel name state events)
     return ()
 
+nextEventTime :: ChannelSet a -> Maybe (Integer, String)
+nextEventTime channels = 
+    let minEvents = Map.fromList $ do
+            (name,(Channel _ _ events)) <- Map.toList channels
+            if Map.null events
+                then []
+                else let (k,v) = Map.findMin events
+                    in return (k,name)
+    in if Map.null minEvents
+        then Nothing
+        else Just $ Map.findMin minEvents
+
+popNextEvent :: ChannelSet a -> String -> Maybe (OutputEvent a (), ChannelSet a)
+popNextEvent channels name = do
+    (Channel name value events) <- Map.lookup name channels
+    let ((_,event), events') = Map.deleteFindMin events
+        channel' = Channel name value events'
+        channels' = Map.insert name channel' channels
+    return (event, channels')
+
 delayEvent :: Integer -> OutputEvent a () -> OutputEvent a ()
-delayEvent delay ev = do
+delayEvent time ev = do
     (Channel name state events) <- lift State.get
-    lift . State.put $ Channel name state (Map.insert delay ev events)
+    lift . State.put $ Channel name state (Map.insert time ev events)
     return ()
 
 getChannelName :: OutputEvent a String
