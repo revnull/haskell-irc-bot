@@ -73,12 +73,11 @@ outputBoard b = do
 initialBoggle init = BoggleBot Nothing (mkStdGen init) 0
 
 finishGame = do
-    (BoggleBot game gen _) <- get
     privMsg "Time is up!"
-    put (BoggleBot Nothing gen 0)
+    putGame Nothing
 
 play :: Bot BoggleBot
-play msg ts = undefined
+play msg ts = return ()
 
 startGame :: Bot BoggleBot
 startGame msg ts = 
@@ -86,6 +85,7 @@ startGame msg ts =
     in case privMsgTextMatch re [] msg of
         Just _ -> do
             board <- makeRandomBoard
+            putGame $ Just (Game board ts Map.empty Set.empty)
             outputBoard board
             delayEvent (ts + 180) finishGame
         Nothing -> return ()
