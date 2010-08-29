@@ -21,23 +21,26 @@ import IRC
 import IRC.Parser
 import Control.Monad.Writer
 import Text.Regex.PCRE.Light.Char8
+import Data.Time.Clock.POSIX
 
-type Bot a = Message -> OutputEvent a ()
+type Bot a = Message -> Integer -> OutputEvent a ()
 
-process :: String -> Bot a -> ChannelSet a -> Maybe ([String], ChannelSet a)
-process line bot channels = case parseMessage line of
+process :: String -> Integer -> Bot a -> ChannelSet a -> 
+    Maybe ([String], ChannelSet a)
+process line time bot channels = case parseMessage line of
     Just (Ping msg) -> Just (["PONG "++msg], channels)
     Just msg@(Join _ channelName) -> 
-        runOnChannel (bot msg) channelName channels
+        runOnChannel (bot msg time) channelName channels
     Just msg@(PrivMsg _ channelName _) ->
-        runOnChannel (bot msg) channelName channels
+        runOnChannel (bot msg time) channelName channels
     Nothing -> Nothing
 
 handler :: Handle -> Bot a -> ChannelSet a -> IO ()
 handler h bot channels = do
     line <- hGetLine h
     print line
-    let (result, channels') = case process line bot channels of
+    time <- getPOSIXTime
+    let (result, channels') = case process line (floor time) bot channels of
             Just val -> val
             Nothing -> ([], channels)
     mapM (hPutStrLn h) result
@@ -52,14 +55,14 @@ privMsg msg = do
     tell ["PRIVMSG " ++ channel ++ " :" ++ msg]
 
 multiBot :: [(Message -> Maybe b, b -> Bot a)] -> Bot a
-multiBot [] _ = return ()
-multiBot ((test, processor):xs) msg = 
+multiBot [] _ _ = return ()
+multiBot ((test, processor):xs) msg time = 
     case test msg of
-        Just x -> processor x msg
-        Nothing -> multiBot xs msg
+        Just x -> processor x msg time
+        Nothing -> multiBot xs msg time
 
 simpleResponse :: OutputEvent a () -> b -> Bot a
-simpleResponse ev _ _ = ev 
+simpleResponse ev _ _ _ = ev 
 
 privMsgTextMatch re reParams (PrivMsg _ _ text) = match re text reParams
 
