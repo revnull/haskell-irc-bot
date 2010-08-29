@@ -105,7 +105,7 @@ validWords solutions text =
 wordValue w = 
     let score = (length w) - 3
         fibs = 1:1:zipWith (+) fibs (tail fibs)
-    in if score > 0
+    in if score >= 0
         then fibs !! score
         else 0
 
