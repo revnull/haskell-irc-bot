@@ -141,6 +141,12 @@ startGame msg ts =
             let words = solve dict board
             putGame $ Just (Game board ts Map.empty words)
             outputBoard board
+            delayEvent (ts + 60) $ do
+                privMsg "Two Minutes Remaining"
+            delayEvent (ts + 120) $ do
+                privMsg "One Minute Remaining"
+            delayEvent (ts + 170) $ do
+                privMsg "Ten Seconds Remaining"
             delayEvent (ts + 180) finishGame
         Nothing -> return ()
 
