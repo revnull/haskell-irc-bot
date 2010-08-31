@@ -143,7 +143,7 @@ play _ _ = return ()
 
 startGame :: Bot BoggleBot
 startGame msg ts = 
-    let re = compile "boggle" [caseless]
+    let re = compile "boggle time!" [caseless]
     in case privMsgTextMatch re [] msg of
         Just _ -> do
             board <- makeRandomBoard
