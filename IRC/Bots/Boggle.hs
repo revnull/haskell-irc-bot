@@ -30,7 +30,7 @@ import Data.List
 type Scores = Map.Map String Int
 type WordSet = Set.Set String
 
-data Game = Game Board Integer Scores WordSet
+data Game = Countdown | Game Board Integer Scores WordSet
 data BoggleBot = BoggleBot Dictionary (Maybe Game) StdGen Int
 
 getDictionary = do
@@ -132,42 +132,61 @@ score user word = do
 play :: Bot BoggleBot
 play (PrivMsg user _ text) _ = do
     game <- getGame
-    let (Game board _ _ solutions) = fromJust game
-        words = validWords solutions text
-    mapM (score user) words
-    sb <- incrementScrollback
-    if sb > 20
-        then outputBoard board
-        else return ()
+    case game of
+        Nothing -> return ()
+        Just Countdown -> return ()
+        Just (Game board _ _ solutions) ->
+            let words = validWords solutions text
+            in do
+                mapM (score user) words
+                sb <- incrementScrollback
+                if sb > 20
+                    then outputBoard board
+                    else return ()
 play _ _ = return ()
+
+countdown :: Integer -> OutputEvent BoggleBot () -> OutputEvent BoggleBot ()
+countdown ts action = 
+    let countMsg 9 = privMsg "1 second until Boggle Time"
+        countMsg x = (privMsg $ (show $ 10 - x) ++ 
+            " seconds until Boggle Time!")
+        remaining ts x = delayEvent (ts + x) $ countMsg x
+    in do
+        putGame $ Just Countdown
+        mapM (remaining ts) [0..9]
+        delayEvent (ts + 10) action
+
+startPlaying :: Integer -> OutputEvent BoggleBot ()
+startPlaying ts = do
+    board <- makeRandomBoard
+    dict <- getDictionary
+    let words = solve dict board
+    putGame $ Just (Game board ts Map.empty words)
+    outputBoard board
+    delayEvent (ts + 60) $ do
+        privMsg "Two Minutes Remaining"
+        outputBoard board
+    delayEvent (ts + 120) $ do
+        privMsg "One Minute Remaining"
+        outputBoard board
+    delayEvent (ts + 170) $ do
+        privMsg "Ten Seconds Remaining"
+        outputBoard board
+    delayEvent (ts + 180) finishGame
 
 startGame :: Bot BoggleBot
 startGame msg ts = 
     let re = compile "boggle time!" [caseless]
     in case privMsgTextMatch re [] msg of
         Just _ -> do
-            board <- makeRandomBoard
-            dict <- getDictionary
-            let words = solve dict board
-            putGame $ Just (Game board ts Map.empty words)
-            outputBoard board
-            delayEvent (ts + 60) $ do
-                privMsg "Two Minutes Remaining"
-                outputBoard board
-            delayEvent (ts + 120) $ do
-                privMsg "One Minute Remaining"
-                outputBoard board
-            delayEvent (ts + 170) $ do
-                privMsg "Ten Seconds Remaining"
-                outputBoard board
-            delayEvent (ts + 180) finishGame
+            countdown ts (startPlaying $ ts + 10)
         Nothing -> return ()
 
 boggle :: Bot BoggleBot
 boggle msg ts = do
     game <- getGame
     case game of
-        Just g -> play msg ts
+        Just _ -> play msg ts
         Nothing -> startGame msg ts
 
 initialRandomBoggle dict = do
