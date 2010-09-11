@@ -59,7 +59,7 @@ loadDictionary filename = withFile filename ReadMode $ loadDictionaryIter Empty
 nextChild :: String -> Dictionary -> Maybe Dictionary
 nextChild "" dict = Just dict
 nextChild (x:xs) n@(Node _ children) = do
-    child <- Map.lookup (toUpper x) children
+    child <- Map.lookup x children
     nextChild xs child
 nextChild _ _ = Nothing
 

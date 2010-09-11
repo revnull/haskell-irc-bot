@@ -23,7 +23,7 @@ type Board = Array (Int,Int) String
 
 letterFreqs :: Map.Map String [Int]
 letterFreqs = Map.fromList [
-    ("Qu", [3]),
+    ("QU", [3]),
     ("A", [73, 15, 2, 1, 1]),
     ("C", [43, 6, 1]),
     ("B", [21, 2, 1, 1]),
@@ -75,6 +75,7 @@ randomLetters gen count =
     let totalCount = sum $ [head l | (_,l) <- Map.toList letterFreqs]
     in letterIter gen totalCount letterFreqs count
 
+makeBoard :: RandomGen r => r -> (Board,r)
 makeBoard gen =
     let (vals, gen') = randomLetters gen 16
         board = array ((0,0),(3,3)) $ do
