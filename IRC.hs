@@ -39,15 +39,15 @@ data Message = Ping String
     | Quit String String
     deriving Show
 
-connectIRC :: String -> Int -> String -> Maybe String -> IO Handle
-connectIRC server port nick passwd = do
+connectIRC :: String -> Int -> String -> String -> Maybe String -> IO Handle
+connectIRC server port nick user passwd = do
     h <- connectTo server (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
     case passwd of
         (Just pass) -> hPrintf h "PASS %s\n" pass
         Nothing -> return ()
     hPrintf h "NICK %s\n" nick
-    hPrintf h "USER %s 0 * :Haskell IRC Bot\n" nick
+    hPrintf h "USER %s 0 * :Haskell IRC Bot\n" user
     return $ h
 
 joinChannel :: Handle -> String -> a -> IO (Channel a)

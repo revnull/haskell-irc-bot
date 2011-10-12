@@ -19,10 +19,11 @@ import IRC.Bots.Towelie
 server = "192.168.1.20"
 port = 6667
 nick = "AmIBotOrNot"
+user = towelie
 passwd = Nothing
 
 main = do
-    connection <- connectIRC server port nick passwd
+    connection <- connectIRC server port nick user passwd
     channels <- joinChannels connection [("#bots",[])]
     handler connection towelie channels
 
